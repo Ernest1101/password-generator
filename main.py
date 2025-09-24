@@ -1,73 +1,89 @@
-import tkinter as tk
-from tkinter import messagebox, StringVar
+import flet as ft
 import random
 import string
 
-def generate_password():
-    try:
-        length = int(length_var.get())
-        if length <= 0:
-            raise ValueError
-    except ValueError:
-        messagebox.showerror("Ошибка", "Длина пароля должна быть положительным числом!")
-        return
+def main(page: ft.Page):
+    page.title = "🔐 Password Generator"
+    page.padding = 30
+    page.window_width = 500
+    page.window_height = 550
+    page.theme_mode = ft.ThemeMode.LIGHT
 
-    chars = ""
-    if use_upper.get():
-        chars += string.ascii_uppercase
-    if use_lower.get():
-        chars += string.ascii_lowercase
-    if use_digits.get():
-        chars += string.digits
-    if use_symbols.get():
-        chars += "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    password_output = ft.TextField(
+        label="Ваш пароль",
+        read_only=True,
+        text_align=ft.TextAlign.CENTER,
+        multiline=False,
+        width=440,
+        height=50,
+        text_size=16,
+        border_color="#2196f3",
+        focused_border_color="#1976d2"
+    )
 
-    if exclude_ambiguous.get():
-        ambiguous = "0O1lI"
-        chars = ''.join(c for c in chars if c not in ambiguous)
+    length_slider = ft.Slider(
+        min=4,
+        max=100,
+        value=12,
+        divisions=96,
+        label="{value}",
+        width=400
+    )
 
-    if not chars:
-        messagebox.showwarning("Предупреждение", "Выберите хотя бы один тип символов!")
-        return
+    upper_check = ft.Checkbox(label="Заглавные буквы (A–Z)", value=True)
+    lower_check = ft.Checkbox(label="Строчные буквы (a–z)", value=True)
+    digits_check = ft.Checkbox(label="Цифры (0–9)", value=True)
+    symbols_check = ft.Checkbox(label="Спецсимволы (!@#$%^&*...)", value=True)
+    exclude_check = ft.Checkbox(label="Исключить похожие символы (0, O, 1, l...)", value=False)
 
-    password = ''.join(random.choice(chars) for _ in range(length))
-    password_output.set(password)
+    def copy_password(e):
+        page.set_clipboard(password_output.value)
+        page.snack_bar = ft.SnackBar(ft.Text("Пароль скопирован!"), open=True)
+        page.update()
 
-def copy_to_clipboard():
-    root.clipboard_clear()
-    root.clipboard_append(password_output.get())
-    messagebox.showinfo("Готово", "Пароль скопирован в буфер обмена!")
+    def generate(e):
+        length = int(length_slider.value)
+        chars = ""
+        if upper_check.value:
+            chars += string.ascii_uppercase
+        if lower_check.value:
+            chars += string.ascii_lowercase
+        if digits_check.value:
+            chars += string.digits
+        if symbols_check.value:
+            chars += "!@#$%^&*()_+-=[]{}|;:,.<>?"
 
-# Создаём окно
-root = tk.Tk()
-root.title("🔐 Генератор паролей")
-root.geometry("400x300")
-root.resizable(False, False)
+        if exclude_check.value:
+            for c in "0O1lI":
+                chars = chars.replace(c, "")
 
-# Переменные
-length_var = StringVar(value="12")
-use_upper = tk.BooleanVar(value=True)
-use_lower = tk.BooleanVar(value=True)
-use_digits = tk.BooleanVar(value=True)
-use_symbols = tk.BooleanVar(value=True)
-exclude_ambiguous = tk.BooleanVar(value=False)
-password_output = StringVar()
+        if not chars:
+            page.snack_bar = ft.SnackBar(ft.Text("Выберите хотя бы один тип символов!"), open=True)
+            page.update()
+            return
 
-# Элементы интерфейса
-tk.Label(root, text="Длина пароля:").pack(pady=(10, 0))
-tk.Entry(root, textvariable=length_var, width=10).pack()
+        password = ''.join(random.choice(chars) for _ in range(length))
+        password_output.value = password
+        page.update()
 
-tk.Checkbutton(root, text="Заглавные буквы (A-Z)", variable=use_upper).pack(anchor="w", padx=20)
-tk.Checkbutton(root, text="Строчные буквы (a-z)", variable=use_lower).pack(anchor="w", padx=20)
-tk.Checkbutton(root, text="Цифры (0-9)", variable=use_digits).pack(anchor="w", padx=20)
-tk.Checkbutton(root, text="Спецсимволы (!@#$...)", variable=use_symbols).pack(anchor="w", padx=20)
-tk.Checkbutton(root, text="Исключить похожие символы (0, O, 1, l...)", variable=exclude_ambiguous).pack(anchor="w", padx=20)
+    page.add(
+        ft.Text("Генератор надёжных паролей", size=24, weight=ft.FontWeight.BOLD),
+        ft.Divider(height=20),
+        ft.Column([
+            ft.Text("Длина пароля:", size=14),
+            length_slider
+        ], spacing=5),
+        ft.Divider(height=10),
+        upper_check,
+        lower_check,
+        digits_check,
+        symbols_check,
+        exclude_check,
+        ft.Divider(height=20),
+        ft.ElevatedButton("Сгенерировать пароль", on_click=generate, width=220),
+        ft.Divider(height=20),
+        password_output,
+        ft.ElevatedButton("Копировать", on_click=copy_password, width=220)
+    )
 
-tk.Button(root, text="Сгенерировать пароль", command=generate_password, bg="#4CAF50", fg="white").pack(pady=10)
-
-tk.Entry(root, textvariable=password_output, width=50, justify="center", state="readonly").pack(pady=5)
-
-tk.Button(root, text="Копировать", command=copy_to_clipboard).pack(pady=5)
-
-# Запуск
-root.mainloop()
+ft.app(target=main)
